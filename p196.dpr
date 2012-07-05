@@ -56,7 +56,7 @@ begin
     WriteLn(Cycle: 10, ' it', Length(Work): 10, ' dig', (Time2 - Time1) / freq: 14: 6, ' s');
     s:= NumberToString(Work);
     if Length(s) > 50 then
-      s:= Copy(s, 1, 25) + ' ... ' + Copy(s, length(s) - 25, 25);
+      s:= Copy(s, 1, 25) + ' ... ' + Copy(s, length(s) - 24, 25);
     WriteLn(s);
     WriteLn;
     WriteLn;

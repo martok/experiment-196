@@ -45,34 +45,54 @@ end;
 procedure NumberAdd(var Number, Summand: TNumber);
 var
   p: Cardinal;
-  Numb, Summ, last: PByte;
+  Numb, last: PByte;
 begin
   if Length(Number) < Length(Summand) then
     SetLength(Number, Length(Summand));
 
-  Numb:= @Number[0];
-  Summ:= @Summand[0];
-
   //blind addieren
   last:= @Summand[high(Summand)];
-  while PtrUInt(Summ) <= PtrUInt(last) do begin
-    Inc(Numb^, Summ^);
-    inc(Numb);
-    Inc(Summ);
+  asm
+    mov ebx, last          // last -> ebx
+    mov ecx, Number        // @Number[0] -> ecx
+    mov ecx, [ecx]
+    mov edx, Summand       // @Summand[0] -> edx
+    mov edx, [edx]
+
+    jmp @@2                //while-kopf
+    @@1:
+    mov al, [edx]          // summand^
+    add [ecx], al          // number^ += al
+    inc ecx                // number++
+    inc edx                // summand++
+    @@2:                   //while
+    cmp edx, ebx           // summand <= ebx repeat
+    jbe @@1
   end;
 
   //alle überläufer weiterschieben
-  Numb:= @Number[0];
   last:= @Number[high(Number)];
-  while PtrUInt(Numb) < PtrUInt(last) do begin
-    if Numb^ >= NUMBER_BASE then begin
-      dec(Numb^, NUMBER_BASE);
-      inc(PByte(PtrUInt(Numb) + 1)^);
-    end;
-    inc(Numb);
+  asm
+      mov ebx, last                      // last -> ebx
+      mov ecx, Number                    // @Number[0] -> ecx
+      mov ecx, [ecx]
+
+      jmp @@2                            //while-kopf
+      @@1:
+      cmp byte ptr [ecx], NUMBER_BASE    // number^ < BASE?
+      jb @@nochg
+      sub byte ptr [ecx], NUMBER_BASE    // number^-= BASE
+      lea edx,[ecx+1]                    // byte danach
+      inc byte ptr [edx]                 // [number+1]^+=1
+      @@nochg:
+      inc ecx                            // number++
+      @@2:                               //while
+      cmp ecx, ebx                       // summand < ebx repeat
+      jb @@1
   end;
+
   //falls der letzte überlief, verlängern
-  if Numb^ >= NUMBER_BASE then begin
+  if last^ >= NUMBER_BASE then begin
     p:= Length(Number);
     SetLength(Number, p + 1);
     Numb:= @Number[p - 1];                                  // neu holen, der ist nach SetLength woanders

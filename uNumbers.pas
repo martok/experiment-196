@@ -7,12 +7,12 @@ uses SysUtils, Math;
 const
   NUMBER_BASE = 10;
 type
-  {$IF NOT Defined(PtrUInt)}
+{$IF NOT Defined(PtrUInt)}
   PtrUInt = Cardinal;
-  {$IFEND}
+{$IFEND}
 
   TDigit = 0..NUMBER_BASE - 1;
-  TNumber = packed array of TDigit;                              // Rückwärts! Niederwertigste Stelle ist [0]
+  TNumber = packed array of TDigit;                         // Rückwärts! Niederwertigste Stelle ist [0]
 
 procedure NumberFromString(var Number: TNumber; Str: string);
 function NumberToString(var Number: TNumber): string;
@@ -31,7 +31,6 @@ begin
   SetLength(Number, Length(Str));
   for i:= 0 to Length(Str) - 1 do
     Number[i]:= Ord(Str[Length(Str) - i]) - Ord('0');
-
 end;
 
 function NumberToString(var Number: TNumber): string;
@@ -41,7 +40,6 @@ begin
   SetLength(Result, Length(Number));
   for i:= 0 to high(Number) do
     Result[Length(Result) - i]:= Chr(Ord('0') + Number[i]);
-
 end;
 
 procedure NumberAdd(var Number, Summand: TNumber);
@@ -57,7 +55,7 @@ begin
 
   //blind addieren
   last:= @Summand[high(Summand)];
-  while PtrUInt(Summ)<=PtrUInt(last) do begin
+  while PtrUInt(Summ) <= PtrUInt(last) do begin
     Inc(Numb^, Summ^);
     inc(Numb);
     Inc(Summ);
@@ -66,18 +64,18 @@ begin
   //alle überläufer weiterschieben
   Numb:= @Number[0];
   last:= @Number[high(Number)];
-  while PtrUInt(Numb)<PtrUInt(last) do begin
+  while PtrUInt(Numb) < PtrUInt(last) do begin
     if Numb^ >= NUMBER_BASE then begin
       dec(Numb^, NUMBER_BASE);
-      inc(PByte(PtrUInt(Numb)+1)^);
+      inc(PByte(PtrUInt(Numb) + 1)^);
     end;
     inc(Numb);
   end;
   //falls der letzte überlief, verlängern
   if Numb^ >= NUMBER_BASE then begin
     p:= Length(Number);
-    SetLength(Number, p+1);
-    Numb:= @Number[p-1]; // neu holen, der ist nach SetLength woanders
+    SetLength(Number, p + 1);
+    Numb:= @Number[p - 1];                                  // neu holen, der ist nach SetLength woanders
     dec(Numb^, NUMBER_BASE);
     inc(Numb);
     Numb^:= 1;

@@ -45,7 +45,7 @@ end;
 procedure NumberAdd(var Number, Summand: TNumber);
 var
   p: Cardinal;
-  Numb, last: PByte;
+  last: PByte;
 begin
   if Length(Number) < Length(Summand) then
     SetLength(Number, Length(Summand));
@@ -95,10 +95,14 @@ begin
   if last^ >= NUMBER_BASE then begin
     p:= Length(Number);
     SetLength(Number, p + 1);
-    Numb:= @Number[p - 1];                                  // neu holen, der ist nach SetLength woanders
-    dec(Numb^, NUMBER_BASE);
-    inc(Numb);
-    Numb^:= 1;
+    asm
+      mov ebx, Number                    // @Number[0] -> ecx
+      mov ebx, [ebx]
+      add ebx, p                         // auf [p]
+      mov byte ptr [ebx], 1              // 1 setzen
+      dec ebx
+      sub byte ptr [ebx], NUMBER_BASE    // [number-1]^-= BASE
+    end;
   end;
 end;
 

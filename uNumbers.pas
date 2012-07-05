@@ -104,16 +104,28 @@ end;
 
 procedure NumberReverse(var Reversed, Number: TNumber);
 var
-  i: integer;
-  N, R: PByte;
+  R: PByte;
 begin
   SetLength(Reversed, Length(Number));
-  N:= @Number[0];
   R:= @Reversed[high(Reversed)];
-  for i:= high(Reversed) downto 0 do begin
-    R^:= N^;
-    Inc(N);
-    Dec(R);
+  asm
+    push ebx
+    mov edx, R             // R -> edx
+    mov ecx, Number        // @Number[0] -> ecx
+    mov ecx, [ecx]
+    mov ebx, Reversed      // @Reversed[0] -> ecx
+    mov ebx, [ebx]
+
+    jmp @@2                //while-kopf
+    @@1:
+    mov al, [ecx]          // number^ -> al
+    mov [edx], al          // al -> rev^
+    inc ecx                // number++
+    dec edx                // rev--
+    @@2:                   //while
+    cmp edx, ebx           // rev>=reversed[0] repeat
+    jge @@1
+    pop ebx
   end;
 end;
 

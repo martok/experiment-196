@@ -1,8 +1,14 @@
 {$APPTYPE console}
 program p196;
-
+{$IFDEF FPC}
+  {$MODE DELPHI}
+  {$Optimization ON}
+  {$Optimization RegVar}
+  {$Optimization PEEPHOLE}
+  {$Optimization CSE}
+  {$Optimization ASMCSE}
+{$Endif}
 uses
-  FastMM4,
   SysUtils,
   Windows,
   uNumbers in 'uNumbers.pas';

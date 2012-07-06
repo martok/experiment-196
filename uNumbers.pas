@@ -1,5 +1,12 @@
 unit uNumbers;
-
+{$IFDEF FPC}
+  {$MODE DELPHI}
+  {$Optimization ON}
+  {$Optimization RegVar}
+  {$Optimization PEEPHOLE}
+  {$Optimization CSE}
+  {$Optimization ASMCSE}
+{$Endif}
 interface
 
 uses SysUtils, Math;
@@ -8,12 +15,21 @@ const
   NUMBER_BASE = 10;
 type
   TDigit = 0..NUMBER_BASE - 1;
-  TDigits = packed array of word;
+  TDigits = packed array of byte;
   TNumber = packed record
     Length: integer;
     Digits: TDigits;
   end;
-
+  TSumCar = record
+             s,c : byte;
+            end;
+  TSumCarFeld = array[0..19] of TsumCar;             
+const  
+  SumCarFeld : TSumCarFeld =((s:0;c:0),(s:1;c:0),(s:2;c:0),(s:3;c:0),(s:4;c:0),
+                             (s:5;c:0),(s:6;c:0),(s:7;c:0),(s:8;c:0),(s:9;c:0),
+                             (s:0;c:1),(s:1;c:1),(s:2;c:1),(s:3;c:1),(s:4;c:1),
+                             (s:5;c:1),(s:6;c:1),(s:7;c:1),(s:8;c:1),(s:9;c:1));
+                             
 procedure NumberFromString(var Number: TNumber; Str: string);
 function  NumberToString(var Number: TNumber): string;
 
@@ -46,24 +62,21 @@ end;
 
 procedure NextNumber(var NewNum, OldNum: TNumber);
 var
-  p,j,sum,carry: integer;
+  p,j,carry: integer;
 begin
   Setlength(NewNum.Digits,OldNum.Length+1);
   NewNum.Length := OldNum.Length;
   carry := 0;
   j:= OldNum.Length-1;
-  for p:= 0 to OldNum.Length-1 do begin
-    Sum:= OldNum.Digits[p] + OldNum.Digits[j] + carry;
-    if Sum >= NUMBER_BASE then begin
-      NewNum.Digits[p]:= Sum-NUMBER_BASE;
-      carry := 1;
-    end
-    else begin
-      NewNum.Digits[p]:= Sum;
-      carry := 0;
-    end;
+  for p:= 0 to OldNum.Length-1 do 
+    begin
+    With SumCarFeld[OldNum.Digits[p] + OldNum.Digits[j] + carry] do
+      begin
+      NewNum.Digits[p] := s;
+      Carry := c;
+      end;
     dec(j);
-  end;
+    end;
   NewNum.Digits[NewNum.Length] := carry;
   if (carry<>0) then inc(NewNum.Length);
 end;

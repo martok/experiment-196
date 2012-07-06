@@ -7,19 +7,11 @@ uses
   Windows,
   uNumbers in 'uNumbers.pas';
 
-////////////////////////////////////////////////////////////////////////////////
-// Konfiguration
-////////////////////////////////////////////////////////////////////////////////
-
 const
-  {.$DEFINE TEST_ADDITION}
-  {.$DEFINE TEST_REVERSE_ADD}
-  STOP_AT_LENGTH = 20000;
-
-  //////////////////////////////////////////////////////////////////////////////
-
+  MaxCyc = 241389;
+//  MaxCyc = 100000;
 var
-  Work: TNumber;
+  N1, N2: TNumber;
   Time1, Time2, Freq: Int64;
   Cycle: Cardinal;
   s: string;
@@ -27,44 +19,34 @@ begin
   repeat
     Write('Startzahl: ');
     ReadLn(s);
-    if s = '' then
+    if s='' then
       break;
-    NumberFromString(Work, s);
-{$IFDEF TEST_ADDITION}
-    NumberFromString(Rev, '1');
-    NumberAdd(Work, Rev);
-    WriteLn(NumberToString(Work));
-    continue;
-{$ENDIF}
-{$IFDEF TEST_REVERSE_ADD}
-    NumberAddReversed(Work);
-    WriteLn(NumberToString(Work));
-    WriteLn(NumberCheckPalindrome(Work));
-    continue;
-{$ENDIF}
-
+    NumberFromString(N1, s);
     QueryPerformanceFrequency(Freq);
-    Cycle:= 0;                                              // das erste ist kein cycle...
+    Cycle:= 0; // das erste ist kein cycle...
     QueryPerformanceCounter(Time1);
     repeat
-      NumberAddReversed(Work);
+      NextNumber(N2, N1);
       inc(Cycle);
-      if Cycle mod 200 = 0 then begin
-        QueryPerformanceCounter(Time2);
-        WriteLn(Cycle: 10, ' it', Length(Work): 10, ' dig', (Time2 - Time1) / freq: 14: 1, ' s');
-      end;
-      if Length(Work) >= STOP_AT_LENGTH then
+      if (Cycle>=MaxCyc) or checkpali(n2) then begin
+        {Ergebnis immer in N1}
+        N1 := N2;
         break;
-    until NumberCheckPalindrome(Work);
+      end;
+      NextNumber(N1, N2);
+      inc(Cycle);
+      if (Cycle>=MaxCyc) or checkpali(n1) then break;
+      if Cycle mod 10000 = 0 then begin
+        QueryPerformanceCounter(Time2);
+        WriteLn(Cycle:10,' it',N1.Length:10,' dig',(Time2-Time1)/freq:14:1,' s');
+      end;
+    until false;
     QueryPerformanceCounter(Time2);
+    s := NumberToString(N1);
     WriteLn('=');
-    WriteLn(Cycle: 10, ' it', Length(Work): 10, ' dig', (Time2 - Time1) / freq: 14: 6, ' s');
-    s:= NumberToString(Work);
-    if Length(s) > 50 then
-      s:= Copy(s, 1, 25) + ' ... ' + Copy(s, length(s) - 24, 25);
+    if Length(s) > 50 then s:= Copy(s, 1, 25) + ' ... ' + Copy(s, length(s) - 24, 25);
     WriteLn(s);
-    WriteLn;
-    WriteLn;
+    WriteLn(Cycle:10,' it',N1.Length:10,' dig',(Time2-Time1)/freq:14:6,' s');
     WriteLn;
   until false;
 end.

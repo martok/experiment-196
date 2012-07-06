@@ -13,12 +13,13 @@ uses
 
 const
   {.$DEFINE TEST_ADDITION}
+  {.$DEFINE TEST_REVERSE_ADD}
   STOP_AT_LENGTH = 20000;
 
   //////////////////////////////////////////////////////////////////////////////
 
 var
-  Work, Rev: TNumber;
+  Work: TNumber;
   Time1, Time2, Freq: Int64;
   Cycle: Cardinal;
   s: string;
@@ -35,14 +36,18 @@ begin
     WriteLn(NumberToString(Work));
     continue;
 {$ENDIF}
+{$IFDEF TEST_REVERSE_ADD}
+    NumberAddReversed(Work);
+    WriteLn(NumberToString(Work));
+    WriteLn(NumberCheckPalindrome(Work));
+    continue;
+{$ENDIF}
 
     QueryPerformanceFrequency(Freq);
     Cycle:= 0;                                              // das erste ist kein cycle...
     QueryPerformanceCounter(Time1);
-    NumberReverse(Rev, Work);
     repeat
-      NumberAdd(Work, Rev);
-      NumberReverse(Rev, Work);
+      NumberAddReversed(Work);
       inc(Cycle);
       if Cycle mod 200 = 0 then begin
         QueryPerformanceCounter(Time2);
@@ -50,7 +55,7 @@ begin
       end;
       if Length(Work) >= STOP_AT_LENGTH then
         break;
-    until NumberCompare(rev, Work);
+    until NumberCheckPalindrome(Work);
     QueryPerformanceCounter(Time2);
     WriteLn('=');
     WriteLn(Cycle: 10, ' it', Length(Work): 10, ' dig', (Time2 - Time1) / freq: 14: 6, ' s');

@@ -14,6 +14,16 @@ type
   TDigit = 0..NUMBER_BASE - 1;
   TNumber = packed array of TDigit;                         // Rückwärts! Niederwertigste Stelle ist [0]
 
+  TSumCar = record
+             s,c : byte;
+            end;
+  TSumCarFeld = array[0..19] of TsumCar;
+const
+  SumCarFeld : TSumCarFeld =((s:0;c:0),(s:1;c:0),(s:2;c:0),(s:3;c:0),(s:4;c:0),
+                             (s:5;c:0),(s:6;c:0),(s:7;c:0),(s:8;c:0),(s:9;c:0),
+                             (s:0;c:1),(s:1;c:1),(s:2;c:1),(s:3;c:1),(s:4;c:1),
+                             (s:5;c:1),(s:6;c:1),(s:7;c:1),(s:8;c:1),(s:9;c:1));
+
 procedure NumberFromString(var Number: TNumber; Str: string);
 function NumberToString(var Number: TNumber): string;
 
@@ -139,7 +149,7 @@ procedure NumberAddReversed(var Number: TNumber);
 var
   p: Cardinal;
   even, rest: boolean;
-  last, middle: PByte;
+  last, middle, CarryFeld: PByte;
 begin
   asm
     push ebx
@@ -150,6 +160,7 @@ begin
   if even then
     dec(p);
   middle:= @Number[p];
+  CarryFeld:= @SumCarFeld;
   asm
     mov ecx, Number                   // ecx links nach rechts
     mov ecx, [ecx]
@@ -158,25 +169,22 @@ begin
     xor ebx, ebx                      // ebx carry
     jmp @@2                           //while-kopf
     @@1:
-    mov al, [edx]                     // al = rechts
-    add al, [ecx]                     // al+= links
+      mov al, [edx]                     // al = rechts
+      add al, [ecx]                     // al+= links
 
-    mov byte ptr [edx], al            // rechts sofort reinschreiben
+      mov byte ptr [edx], al            // rechts sofort reinschreiben
 
-    add al, bl                        // links altes carry beachten
-    xor bl, bl
+      add al, bl                        // links altes carry beachten
+      and eax, $FF
+      mov ebx, CarryFeld
+      lea ebx, [ebx+eax*2]
+      mov al, byte ptr [ebx]
+      mov bl, byte ptr [ebx+1]
 
-    cmp al, NUMBER_BASE                // number^ < BASE?
-    jb @@under
-    sub al, NUMBER_BASE                // number^-= BASE
-    mov bl, 1                          // carry
-    @@under:
+      mov byte ptr [ecx], al            // links mit carry schreiben
 
-    mov byte ptr [ecx], al            // links mit carry schreiben
-
-    inc ecx                           // number++
-    dec edx                           // summand++
-
+      inc ecx                           // number++
+      dec edx                           // summand++
     @@2:                              //while
     cmp ecx, middle                    // der von links kommt <= middle repeat
     jbe @@1
@@ -186,12 +194,11 @@ begin
     @@10:
       mov al, [ecx]                    // laden
       add al, bl                       // carry anwenden
-      xor bl, bl
-      cmp al, NUMBER_BASE              // number^ < BASE?
-      jb @@nochg
-      sub al, NUMBER_BASE              // number^-= BASE
-      mov bl, 1                        // neues carry
-      @@nochg:
+      and eax, $FF
+      mov ebx, CarryFeld
+      lea ebx, [ebx+eax*2]
+      mov al, byte ptr [ebx]
+      mov bl, byte ptr [ebx+1]
       mov byte ptr [ecx], al
       inc ecx                          // number++
     @@20:                              //while

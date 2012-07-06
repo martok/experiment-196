@@ -138,6 +138,7 @@ end;
 procedure NumberAddReversed(var Number: TNumber);
 var
   p: Cardinal;
+  even, rest: boolean;
   last, middle: PByte;
 begin
   asm
@@ -145,54 +146,63 @@ begin
   end;
   last:= @Number[high(Number)];
   p:= length(Number) div 2;
-  if not odd(Length(Number)) then
+  even:= not odd(Length(Number));
+  if even then
     dec(p);
   middle:= @Number[p];
   asm
-    mov ebx, middle                   // ebx > Ende
     mov ecx, Number                   // ecx links nach rechts
     mov ecx, [ecx]
     mov edx, last                     // edx rechts nach links
 
+    xor ebx, ebx                      // ebx carry
     jmp @@2                           //while-kopf
     @@1:
     mov al, [edx]                     // al = rechts
     add al, [ecx]                     // al+= links
 
-    mov byte ptr [ecx], al            // speichern in number
-    mov byte ptr [edx], al            // ...
+    mov byte ptr [edx], al            // rechts sofort reinschreiben
+
+    add al, bl                        // links altes carry beachten
+    xor bl, bl
+
+    cmp al, NUMBER_BASE                // number^ < BASE?
+    jb @@under
+    sub al, NUMBER_BASE                // number^-= BASE
+    mov bl, 1                          // carry
+    @@under:
+
+    mov byte ptr [ecx], al            // links mit carry schreiben
 
     inc ecx                           // number++
     dec edx                           // summand++
 
     @@2:                              //while
-    cmp ecx, ebx                      // der von links kommt <= ebx repeat
+    cmp ecx, middle                    // der von links kommt <= middle repeat
     jbe @@1
-  end;
 
-  //alle überläufer weiterschieben
-  last:= @Number[high(Number)];
-  asm
-      mov ebx, last                      // last -> ebx
-      mov ecx, Number                    // @Number[0] -> ecx
-      mov ecx, [ecx]
-
-      jmp @@2                            //while-kopf
-      @@1:
-      cmp byte ptr [ecx], NUMBER_BASE    // number^ < BASE?
+    // carries in rechte hälfte tragen
+    jmp @@20                           //while-kopf
+    @@10:
+      mov al, [ecx]                    // laden
+      add al, bl                       // carry anwenden
+      xor bl, bl
+      cmp al, NUMBER_BASE              // number^ < BASE?
       jb @@nochg
-      sub byte ptr [ecx], NUMBER_BASE    // number^-= BASE
-      lea edx,[ecx+1]                    // byte danach
-      inc byte ptr [edx]                 // [number+1]^+=1
+      sub al, NUMBER_BASE              // number^-= BASE
+      mov bl, 1                        // neues carry
       @@nochg:
-      inc ecx                            // number++
-      @@2:                               //while
-      cmp ecx, ebx                       // summand < ebx repeat
-      jb @@1
-  end;
+      mov byte ptr [ecx], al
+      inc ecx                          // number++
+    @@20:                              //while
+    cmp ecx, last                      // der von links kommt <= ende repeat
+    jle @@10
 
   //falls der letzte überlief, verlängern
-  if last^ >= NUMBER_BASE then begin
+    mov rest, bl                       // variable rausreichen
+  end;
+
+  if rest then begin
     p:= Length(Number);
     SetLength(Number, p + 1);
     asm
@@ -200,8 +210,6 @@ begin
       mov ebx, [ebx]
       add ebx, p                         // auf [p]
       mov byte ptr [ebx], 1              // 1 setzen
-      dec ebx
-      sub byte ptr [ebx], NUMBER_BASE    // [number-1]^-= BASE
     end;
   end;
   asm

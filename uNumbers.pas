@@ -14,6 +14,16 @@ type
   TDigit = 0..NUMBER_BASE - 1;
   TNumber = packed array of TDigit;                         // Rückwärts! Niederwertigste Stelle ist [0]
 
+  TSumCar = record
+             s,c : byte;
+            end;
+  TSumCarFeld = array[0..19] of TsumCar;
+const
+  SumCarFeld : TSumCarFeld =((s:0;c:0),(s:1;c:0),(s:2;c:0),(s:3;c:0),(s:4;c:0),
+                             (s:5;c:0),(s:6;c:0),(s:7;c:0),(s:8;c:0),(s:9;c:0),
+                             (s:0;c:1),(s:1;c:1),(s:2;c:1),(s:3;c:1),(s:4;c:1),
+                             (s:5;c:1),(s:6;c:1),(s:7;c:1),(s:8;c:1),(s:9;c:1));
+
 procedure NumberFromString(var Number: TNumber; Str: string);
 function NumberToString(var Number: TNumber): string;
 
@@ -138,70 +148,86 @@ end;
 procedure NumberAddReversed(var Number: TNumber);
 var
   p: Cardinal;
-  even, rest: boolean;
-  last, middle: PByte;
+  last, CarryFeld: PByte;
+  rest: boolean;
 begin
   asm
     push ebx
   end;
   last:= @Number[high(Number)];
-  p:= length(Number) div 2;
-  even:= not odd(Length(Number));
-  if even then
-    dec(p);
-  middle:= @Number[p];
+  p:= (length(Number) div 2) div 4;
   asm
     mov ecx, Number                   // ecx links nach rechts
     mov ecx, [ecx]
     mov edx, last                     // edx rechts nach links
+    sub edx, 3
 
-    xor ebx, ebx                      // ebx carry
+    //erstmal in DWORD-schritten
+    mov ebx, p
     jmp @@2                           //while-kopf
     @@1:
+    mov eax, [edx]                    // 4 ziffern von hinten
+    bswap eax
+    add eax, [ecx]                    // 4 ziffern addieren
+
+    mov dword ptr [ecx], eax          // wieder...
+    bswap eax                         // ...richtigrum...
+    mov dword ptr [edx], eax          // ...zurückschreiben
+
+    add ecx, 4
+    sub edx, 4
+
+    dec ebx
+    @@2:                              //while
+    cmp ebx, 0                        // der von links kommt <= ebx repeat
+    jg @@1
+
+    @@single:
+    add edx, 3
+
+    // restliche stellen verarbeiten
+    jmp @@20                           //while-kopf
+    @@10:
     mov al, [edx]                     // al = rechts
     add al, [ecx]                     // al+= links
 
-    mov byte ptr [edx], al            // rechts sofort reinschreiben
-
-    add al, bl                        // links altes carry beachten
-    xor bl, bl
-
-    cmp al, NUMBER_BASE                // number^ < BASE?
-    jb @@under
-    sub al, NUMBER_BASE                // number^-= BASE
-    mov bl, 1                          // carry
-    @@under:
-
-    mov byte ptr [ecx], al            // links mit carry schreiben
+    mov byte ptr [ecx], al            // speichern in number
+    mov byte ptr [edx], al            // ...
 
     inc ecx                           // number++
     dec edx                           // summand++
 
-    @@2:                              //while
-    cmp ecx, middle                    // der von links kommt <= middle repeat
-    jbe @@1
-
-    // carries in rechte hälfte tragen
-    jmp @@20                           //while-kopf
-    @@10:
-      mov al, [ecx]                    // laden
-      add al, bl                       // carry anwenden
-      xor bl, bl
-      cmp al, NUMBER_BASE              // number^ < BASE?
-      jb @@nochg
-      sub al, NUMBER_BASE              // number^-= BASE
-      mov bl, 1                        // neues carry
-      @@nochg:
-      mov byte ptr [ecx], al
-      inc ecx                          // number++
     @@20:                              //while
-    cmp ecx, last                      // der von links kommt <= ende repeat
+    cmp ecx, edx                      // der von links kommt <= ebx repeat
     jle @@10
-
-  //falls der letzte überlief, verlängern
-    mov rest, bl                       // variable rausreichen
   end;
 
+  //alle überläufer weiterschieben
+  CarryFeld:= @SumCarFeld[0];
+  last:= @Number[high(Number)];
+  asm
+      mov ecx, Number                    // @Number[0] -> ecx
+      mov ecx, [ecx]
+      mov ebx, CarryFeld
+
+      xor eax,eax                        //carry direkt als summe!
+      jmp @@2                            //while-kopf
+      @@1:
+        add al, byte ptr [ecx]           //stelle addieren
+        lea edx, [ebx+eax*2]             //wo sind wir in der tabelle?
+        mov al, byte ptr [edx]           //wert
+        mov byte ptr [ecx], al
+        mov al, byte ptr [edx+1]         //carry für nächste runde
+
+        inc ecx
+      @@2:                               //while
+      cmp ecx, last                      // summand < ebx repeat
+      jbe @@1
+
+      mov rest, al                       //rausreichen
+  end;
+
+  //falls der letzte überlief, verlängern
   if rest then begin
     p:= Length(Number);
     SetLength(Number, p + 1);

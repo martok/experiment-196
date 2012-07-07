@@ -148,7 +148,7 @@ end;
 procedure NumberAddReversed(var Number: TNumber);
 var
   p: Cardinal;
-  last, CarryFeld: PByte;
+  last: PByte;
   rest: boolean;
 begin
   asm
@@ -203,18 +203,16 @@ begin
   end;
 
   //alle überläufer weiterschieben
-  CarryFeld:= @SumCarFeld[0];
   last:= @Number[high(Number)];
   asm
       mov ecx, Number                    // @Number[0] -> ecx
       mov ecx, [ecx]
-      mov ebx, CarryFeld
 
       xor eax,eax                        //carry direkt als summe!
       jmp @@2                            //while-kopf
       @@1:
         add al, byte ptr [ecx]           //stelle addieren
-        lea edx, [ebx+eax*2]             //wo sind wir in der tabelle?
+        lea edx, [SumCarFeld+eax*2]             //wo sind wir in der tabelle?
         mov al, byte ptr [edx]           //wert
         mov byte ptr [ecx], al
         mov al, byte ptr [edx+1]         //carry für nächste runde
